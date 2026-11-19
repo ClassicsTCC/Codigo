@@ -1,0 +1,251 @@
+<?php 
+
+namespace app\repositories;
+
+use app\database\ConnectionFactory;
+use app\models\Atividade;
+use PDO;
+use PDOException;
+
+class AtividadeRepository {
+
+    private PDO $connection;
+
+    public function __construct()
+    {
+        $this->connection = ConnectionFactory::getConnection();
+    }
+
+    public function getAtividades(array $filtros = []) {
+        $sql = "
+            SELECT
+                a.*, 
+                c.Nome_Categoria AS Categoria_Nome,
+                l.ID_Localizacao AS Localizacao_ID,
+                l.CEP AS Localizacao_CEP,
+                l.Complemento AS Localizacao_Complemento,
+                (SELECT AVG(av.Nota) FROM Avaliacao av WHERE av.ID_Atividade = a.ID_Atividade) AS Media_Avaliacao,
+                (SELECT COUNT(*) FROM Avaliacao av WHERE av.ID_Atividade = a.ID_Atividade) AS Total_Avaliacoes
+            FROM Atividades a
+            LEFT JOIN Categorias c ON c.ID_Categoria = a.Categoria_ID
+            LEFT JOIN Localizacao l ON l.ID_Atividade = a.ID_Atividade
+        ";
+
+        $condicoes = [];
+        $parametros = [];
+
+        if (!empty($filtros['somente_empresas_aprovadas'])) {
+            // RN02: só aparecem no catálogo atividades de empresas aprovadas pelo administrador
+            $condicoes[] = "EXISTS (SELECT 1 FROM Empresa e WHERE e.ID_Empresa = a.Empresa_ID AND LOWER(TRIM(e.Status)) = 'aprovada')";
+        }
+
+        if (!empty($filtros['busca'])) {
+            // Escapa os curingas do LIKE para que "%" e "_" digitados sejam tratados como texto
+            $busca = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], (string) $filtros['busca']);
+            $condicoes[] = "a.Nome LIKE :busca ESCAPE '!'";
+            $parametros[':busca'] = '%' . $busca . '%';
+        }
+
+        if (!empty($filtros['cidade'])) {
+            // A cidade fica na coluna Localizacao da atividade; busca por trecho, como o nome
+            $cidade = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], (string) $filtros['cidade']);
+            $condicoes[] = "a.Localizacao LIKE :cidade ESCAPE '!'";
+            $parametros[':cidade'] = '%' . $cidade . '%';
+        }
+
+        if (!empty($filtros['categoria'])) {
+            $condicoes[] = 'c.Nome_Categoria = :categoria';
+            $parametros[':categoria'] = (string) $filtros['categoria'];
+        }
+
+        if (!empty($filtros['somente_disponiveis'])) {
+            // RN03: atividade disponível possui sessão com vagas que ainda não começou (no dia filtrado, se houver)
+            $sessaoDisponivel = 'EXISTS (SELECT 1 FROM Sessao s WHERE s.ID_Atividade = a.ID_Atividade'
+                . (!empty($filtros['data']) ? ' AND s.Data = :data' : '')
+                . ' AND s.Qtd_disponivel > 0'
+                . ' AND (s.Data > :hoje OR (s.Data = :hoje_hora AND s.Hora > :agora)))';
+            $parametros[':hoje'] = (string) $filtros['hoje'];
+            $parametros[':hoje_hora'] = (string) $filtros['hoje'];
+            $parametros[':agora'] = (string) $filtros['agora'];
+
+            $condicoes[] = $sessaoDisponivel;
+
+            if (!empty($filtros['data'])) {
+                $parametros[':data'] = (string) $filtros['data'];
+            }
+        } elseif (!empty($filtros['data'])) {
+            $condicoes[] = 'EXISTS (SELECT 1 FROM Sessao s WHERE s.ID_Atividade = a.ID_Atividade AND s.Data = :data)';
+            $parametros[':data'] = (string) $filtros['data'];
+        }
+
+        if (!empty($condicoes)) {
+            $sql .= ' WHERE ' . implode(' AND ', $condicoes);
+        }
+
+        if (!empty($filtros['ordenar_por_avaliacao'])) {
+            // Atividades sem avaliação têm média NULL, que fica por último na ordem decrescente
+            $sql .= ' ORDER BY Media_Avaliacao DESC, Total_Avaliacoes DESC, a.Nome ASC';
+        }
+
+        $stmt = $this->connection->prepare($sql);
+        foreach ($parametros as $parametro => $valor) {
+            $stmt->bindValue($parametro, $valor);
+        }
+        $stmt->execute();
+
+        return $stmt->fetchAll();
+    }
+
+    public function getAtividade(int $id) {
+        $sql = "
+            SELECT
+                a.*,
+                c.Nome_Categoria AS Categoria_Nome,
+                l.ID_Localizacao AS Localizacao_ID,
+                l.CEP AS Localizacao_CEP,
+                l.Complemento AS Localizacao_Complemento,
+                e.Status AS Empresa_Status,
+                e.Name AS Empresa_Nome
+            FROM Atividades a
+            LEFT JOIN Categorias c ON c.ID_Categoria = a.Categoria_ID
+            LEFT JOIN Localizacao l ON l.ID_Atividade = a.ID_Atividade
+            LEFT JOIN Empresa e ON e.ID_Empresa = a.Empresa_ID
+            WHERE a.ID_Atividade = :id
+        ";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+        return $stmt->fetch();
+    }
+
+    public function getAtividadesPorEmpresa(int $empresaId): array
+    {
+        $stmt = $this->connection->prepare('SELECT * FROM Atividades WHERE Empresa_ID = :empresa_id ORDER BY Nome ASC');
+        $stmt->bindValue(':empresa_id', $empresaId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    // Atividades de uma empresa com categoria, sessões futuras e sessões futuras com vaga
+    public function getAtividadesDaEmpresaComResumo(int $empresaId, string $hoje, string $agora): array
+    {
+        $sessaoFutura = 's.ID_Atividade = a.ID_Atividade AND (s.Data > :hoje%1$s OR (s.Data = :hoje_hora%1$s AND s.Hora > :agora%1$s))';
+        $sql = 'SELECT a.*, c.Nome_Categoria AS Categoria_Nome,
+                    (SELECT COUNT(*) FROM Sessao s WHERE ' . sprintf($sessaoFutura, '1') . ') AS Sessoes_Futuras,
+                    (SELECT COUNT(*) FROM Sessao s WHERE ' . sprintf($sessaoFutura, '2') . ' AND s.Qtd_disponivel > 0) AS Sessoes_Com_Vaga
+                FROM Atividades a
+                LEFT JOIN Categorias c ON c.ID_Categoria = a.Categoria_ID
+                WHERE a.Empresa_ID = :empresa_id
+                ORDER BY a.Nome ASC';
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bindValue(':empresa_id', $empresaId, PDO::PARAM_INT);
+        foreach (['1', '2'] as $sufixo) {
+            $stmt->bindValue(':hoje' . $sufixo, $hoje);
+            $stmt->bindValue(':hoje_hora' . $sufixo, $hoje);
+            $stmt->bindValue(':agora' . $sufixo, $agora);
+        }
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function countAtividades(): int
+    {
+        $stmt = $this->connection->prepare('SELECT COUNT(*) FROM Atividades');
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function saveAtividade(Atividade $atividade) {
+        $sql = 'INSERT INTO Atividades (Nome, Duracao, Descricao, Localizacao, Valor, Fotos, Categoria_ID, Empresa_ID) VALUES (:nome, :duracao, :descricao, :localizacao, :valor, :fotos, :categoria_id, :empresa_id)';
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bindValue(':nome', $atividade->getNome());
+        $stmt->bindValue(':duracao', $atividade->getDuracao());
+        $stmt->bindValue(':descricao', $atividade->getDescricao());
+        $stmt->bindValue(':localizacao', $atividade->getLocalizacao());
+        $stmt->bindValue(':valor', $atividade->getValor());
+        $stmt->bindValue(':fotos', $atividade->getFotos());
+        $stmt->bindValue(':categoria_id', $atividade->getCategoriaId());
+        $stmt->bindValue(':empresa_id', $atividade->getEmpresaId());
+
+        if ($stmt->execute()) {
+            return (int) $this->connection->lastInsertId();
+        }
+
+        return false;
+    }
+
+    public function updateAtividade(Atividade $atividade) {
+        $sql = 'UPDATE Atividades SET Nome = :nome, Duracao = :duracao, Descricao = :descricao, Localizacao = :localizacao, Valor = :valor, Fotos = :fotos, Categoria_ID = :categoria_id, Empresa_ID = :empresa_id WHERE ID_Atividade = :id';
+        $stmt = $this->connection->prepare($sql);
+        $stmt->bindValue(':nome', $atividade->getNome());
+        $stmt->bindValue(':duracao', $atividade->getDuracao());
+        $stmt->bindValue(':descricao', $atividade->getDescricao());
+        $stmt->bindValue(':localizacao', $atividade->getLocalizacao());
+        $stmt->bindValue(':valor', $atividade->getValor());
+        $stmt->bindValue(':fotos', $atividade->getFotos());
+        $stmt->bindValue(':categoria_id', $atividade->getCategoriaId());
+        $stmt->bindValue(':empresa_id', $atividade->getEmpresaId());
+        $stmt->bindValue(':id', $atividade->getIdAtividade());
+        return $stmt->execute();
+    }
+
+    public function deleteAtividade(int $id, int $empresaId) {
+        $this->connection->beginTransaction();
+
+        try {
+            $sqlAtividade = 'SELECT ID_Atividade FROM Atividades WHERE ID_Atividade = :id AND Empresa_ID = :empresa_id FOR UPDATE';
+            $stmtAtividade = $this->connection->prepare($sqlAtividade);
+            $stmtAtividade->bindValue(':id', $id);
+            $stmtAtividade->bindValue(':empresa_id', $empresaId);
+            $stmtAtividade->execute();
+
+            if (!$stmtAtividade->fetch()) {
+                $this->connection->rollBack();
+                return false;
+            }
+
+            $sqlLocalizacao = 'DELETE FROM Localizacao WHERE ID_Atividade = :id_atividade';
+            $stmtLocalizacao = $this->connection->prepare($sqlLocalizacao);
+            $stmtLocalizacao->bindValue(':id_atividade', $id);
+            $stmtLocalizacao->execute();
+
+            $sqlAgendamento = 'DELETE FROM Agendamento WHERE ID_Atividade = :id_atividade';
+            $stmtAgendamento = $this->connection->prepare($sqlAgendamento);
+            $stmtAgendamento->bindValue(':id_atividade', $id);
+            $stmtAgendamento->execute();
+
+            $sqlAvaliacao = 'DELETE FROM Avaliacao WHERE ID_Atividade = :id_atividade';
+            $stmtAvaliacao = $this->connection->prepare($sqlAvaliacao);
+            $stmtAvaliacao->bindValue(':id_atividade', $id);
+            $stmtAvaliacao->execute();
+
+            $sqlFavorito = 'DELETE FROM Favorito WHERE ID_Atividade = :id_atividade';
+            $stmtFavorito = $this->connection->prepare($sqlFavorito);
+            $stmtFavorito->bindValue(':id_atividade', $id);
+            $stmtFavorito->execute();
+
+            $sqlSessao = 'DELETE FROM Sessao WHERE ID_Atividade = :id_atividade';
+            $stmtSessao = $this->connection->prepare($sqlSessao);
+            $stmtSessao->bindValue(':id_atividade', $id);
+            $stmtSessao->execute();
+
+            $sql = 'DELETE FROM Atividades WHERE ID_Atividade = :id AND Empresa_ID = :empresa_id';
+            $stmt = $this->connection->prepare($sql);
+            $stmt->bindValue(':id', $id);
+            $stmt->bindValue(':empresa_id', $empresaId);
+            $stmt->execute();
+
+            $this->connection->commit();
+
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+            throw $e;
+        }
+    }
+}
