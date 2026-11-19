@@ -1,0 +1,30 @@
+<?php
+
+//Configuração do ambiente
+define('DEV_ENVIRONMENT', true);
+
+if (DEV_ENVIRONMENT == true) {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+}
+
+// Fuso horário usado nas regras de data (sessões, agendamentos e filtros)
+date_default_timezone_set('America/Sao_Paulo');
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+//Configuração do Sistema
+define('APP_NAME', 'Projeto Integrador');
+// O endereço do site acompanha o que foi digitado no navegador (localhost ou o IP da rede)
+$protocolo = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+define('URL_BASE', $protocolo . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost:8080'));
+
+//Configurações do Banco de dados
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'Classics');
+
+define('DB_USER', 'root');
+define('DB_PASS', 'bancodedados');

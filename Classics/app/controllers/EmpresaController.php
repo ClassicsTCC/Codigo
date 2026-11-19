@@ -1,0 +1,174 @@
+<?php 
+
+namespace app\controllers;
+
+use app\core\Controller;
+use app\helpers\Validador;
+use app\models\Empresa;
+use app\services\EmpresaService;
+
+class EmpresaController extends Controller {
+    
+    private EmpresaService $service;
+
+    public function __construct()
+    {
+        $this->service = new EmpresaService();
+    }
+
+    public function salvar() {
+        $nome = trim((string) ($_POST['nome'] ?? ''));
+        $email = trim((string) ($_POST['email'] ?? ''));
+        $cnpj = $_POST['cnpj'] ?? null;
+        $localizacao = $_POST['localizacao'] ?? null;
+        $telefone = $_POST['telefone'] ?? null;
+        $senha = (string) ($_POST['senha'] ?? '');
+        $cadastroPublico = isset($_POST['cadastro_publico']);
+
+        // Somente o cadastro público está disponível
+        if (!$cadastroPublico) {
+            $this->redirect(URL_BASE);
+        }
+
+        $validador = new Validador();
+        $validador->obrigatorio('nome', $nome, 'O nome da empresa é obrigatório.');
+        $validador->obrigatorio('email', $email, 'O e-mail da empresa é obrigatório.');
+        $validador->email('email', $email);
+        $validador->cnpj('cnpj', $cnpj);
+        $validador->telefone('telefone', $telefone);
+        $validador->senha('senha', $senha);
+        $validador->confirmacaoSenha('confirmar_senha', $senha, $_POST['confirmar_senha'] ?? '');
+        if ($validador->temErros()) {
+            $data['empresa'] = [
+                'nome' => $nome,
+                'email' => $email,
+                'cnpj' => $cnpj,
+                'localizacao' => $localizacao,
+                'telefone' => $telefone,
+                'status' => 'pendente'
+            ];
+            $data['erros'] = $validador->getErros();
+            $data['tipo_cadastro'] = 'empresa';
+            $this->view('autenticacao/cadastrar', $data);
+            return;
+        }
+
+        $empresa = new Empresa();
+        $empresa->setNome($nome);
+        $empresa->setEmail($email);
+        $empresa->setCnpj($cnpj);
+        $empresa->setLocalizacao($localizacao);
+        $empresa->setTelefone($telefone);
+        $empresa->setSenha($senha);
+        // RN02: toda empresa nova começa pendente de aprovação
+        $empresa->setStatus('pendente');
+
+        if ($this->service->saveEmpresa($empresa)) {
+            $this->redirect(URL_BASE);
+        } else {
+            $data['empresa'] = [
+                'nome' => $nome,
+                'email' => $email,
+                'cnpj' => $cnpj,
+                'localizacao' => $localizacao,
+                'telefone' => $telefone,
+                'status' => 'pendente'
+            ];
+            $data['erros']['email'] = "Este e-mail já está cadastrado.";
+            $data['tipo_cadastro'] = 'empresa';
+            $this->view('autenticacao/cadastrar', $data);
+        }
+    }
+
+    public function editar() {
+        $empresaId = $this->getEmpresaLogadaId();
+        if ($empresaId === null) {
+            $this->redirect(URL_BASE);
+        }
+
+        // A empresa só pode editar o próprio cadastro
+        $data['empresa'] = $this->service->getEmpresa($empresaId);
+        if (!$data['empresa']) {
+            $this->redirect(URL_BASE);
+        }
+
+        $this->view('empresas/empresa_edit', $data);
+    }
+
+    public function atualizar() {
+        $empresaId = $this->getEmpresaLogadaId();
+        if ($empresaId === null) {
+            $this->redirect(URL_BASE);
+        }
+
+        $validador = new Validador();
+        $email = trim((string) ($_POST['email'] ?? ''));
+        $validador->obrigatorio('nome', trim((string) ($_POST['nome'] ?? '')), 'O nome da empresa é obrigatório.');
+        $validador->obrigatorio('email', $email, 'O e-mail da empresa é obrigatório.');
+        $validador->email('email', $email);
+        $validador->cnpj('cnpj', $_POST['cnpj'] ?? '');
+        $validador->telefone('telefone', $_POST['telefone'] ?? '');
+        // Senha em branco mantém a atual; senha nova precisa seguir a regra
+        $validador->senha('senha', $_POST['senha'] ?? '', false);
+        if ($validador->temErros()) {
+            $data['empresa'] = $this->montarDadosEmpresaFormulario($empresaId);
+            $data['erros'] = $validador->getErros();
+            $this->view('empresas/empresa_edit', $data);
+            return;
+        }
+
+        // O id vem da sessão; status e senha vazia são mantidos pelo service
+        $empresa = new Empresa(
+            $empresaId,
+            trim((string) ($_POST['nome'] ?? '')),
+            $email,
+            $_POST['cnpj'] ?? '',
+            $_POST['localizacao'] ?? '',
+            $_POST['telefone'] ?? '',
+            (string) ($_POST['senha'] ?? '')
+        );
+
+        if ($this->service->updateEmpresa($empresa)) {
+            $empresaAtualizada = $this->service->getEmpresa($empresaId);
+            if ($empresaAtualizada) {
+                $_SESSION['empresa_logada'] = Empresa::arrayParaObjeto($empresaAtualizada);
+            }
+            $this->redirect(URL_BASE . '/empresa/ver?id=' . $empresaId);
+        } else {
+            $data['empresa'] = $this->montarDadosEmpresaFormulario($empresaId);
+            $data['erros']['email'] = "Este e-mail já está cadastrado.";
+            $this->view('empresas/empresa_edit', $data);
+        }
+    }
+
+    public function verEmpresa() {
+        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+        if ($id <= 0) {
+            $this->redirect(URL_BASE);
+        }
+
+        $data['empresa'] = $this->service->getEmpresa($id);
+        $data['empresa_propria'] = $id === $this->getEmpresaLogadaId();
+
+        // RN02: o perfil de empresa não aprovada só é visível para ela mesma
+        $statusEmpresa = strtolower(trim((string) ($data['empresa']['Status'] ?? '')));
+        if ($data['empresa'] && !$data['empresa_propria'] && $statusEmpresa !== EmpresaService::STATUS_APROVADA) {
+            $this->redirect(URL_BASE);
+        }
+
+        $this->view('empresas/empresa_show', $data);
+    }
+
+    private function montarDadosEmpresaFormulario(int $empresaId): array
+    {
+        return [
+            'ID_Empresa' => $empresaId,
+            'nome' => $_POST['nome'] ?? '',
+            'email' => trim((string) ($_POST['email'] ?? '')),
+            'cnpj' => $_POST['cnpj'] ?? '',
+            'localizacao' => $_POST['localizacao'] ?? '',
+            'telefone' => $_POST['telefone'] ?? ''
+        ];
+    }
+
+}
