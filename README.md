@@ -7,7 +7,7 @@ Visitantes pesquisam atividades por nome, cidade, categoria e data. Clientes res
 ## Tecnologias
 
 - PHP 8 com arquitetura MVC própria, sem frameworks (Controller → Service → Repository → Model/View)
-- MySQL/MariaDB com PDO e consultas preparadas
+- MySQL com PDO e consultas preparadas
 - HTML, CSS, JavaScript e Bootstrap 5
 
 ## Requisitos
