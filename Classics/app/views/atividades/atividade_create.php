@@ -117,11 +117,14 @@ $bloquearSemCategoria = empty($categorias) && !$adminCadastrando;
                             </div>
                             <div class="mb-3">
                                 <label for="localizacao" class="form-label">Cidade</label>
-                                <input type="text" class="form-control" id="localizacao" name="localizacao" placeholder="Ex.: Foz do Iguaçu" value="<?= htmlspecialchars($atividade['Localizacao'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="text" class="form-control <?= isset($erros['localizacao']) ? 'is-invalid' : '' ?>" id="localizacao" name="localizacao" placeholder="Ex.: Foz do Iguaçu" value="<?= htmlspecialchars($atividade['Localizacao'] ?? '', ENT_QUOTES, 'UTF-8') ?>" required>
+                                <?php if (isset($erros['localizacao'])): ?>
+                                    <div class="invalid-feedback"><?= htmlspecialchars($erros['localizacao'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3">
                                 <label for="valor" class="form-label">Valor</label>
-                                <input type="text" class="form-control <?= isset($erros['valor']) ? 'is-invalid' : '' ?>" id="valor" name="valor" value="<?= htmlspecialchars((string) ($atividade['Valor'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="text" class="form-control <?= isset($erros['valor']) ? 'is-invalid' : '' ?>" id="valor" name="valor" inputmode="decimal" placeholder="Ex.: 150,50" value="<?= htmlspecialchars((string) ($atividade['Valor'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                 <?php if (isset($erros['valor'])): ?>
                                     <div class="invalid-feedback"><?= htmlspecialchars($erros['valor'], ENT_QUOTES, 'UTF-8') ?></div>
                                 <?php endif; ?>

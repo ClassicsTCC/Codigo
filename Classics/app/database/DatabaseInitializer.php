@@ -7,20 +7,23 @@ use PDO;
 class DatabaseInitializer
 {
 
+    // Cria o banco e executa os scripts de estrutura e do administrador inicial
     public function init(PDO $connection)
     {
-        $connection->exec("CREATE DATABASE IF NOT EXISTS " . DB_NAME);
-        $connection->exec("USE " . DB_NAME);
+        $connection->exec('CREATE DATABASE IF NOT EXISTS `' . DB_NAME . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
+        $connection->exec('USE `' . DB_NAME . '`');
 
-        $scriptPath = __DIR__ . '/scripts/script.sql';
+        foreach (['script.sql', 'admin.sql'] as $arquivo) {
+            $scriptPath = __DIR__ . '/scripts/' . $arquivo;
 
-        if (file_exists($scriptPath)) {
-            $sql = file_get_contents($scriptPath);
-            
+            if (!file_exists($scriptPath)) {
+                continue;
+            }
+
             try {
-                $connection->exec($sql);
+                $connection->exec(file_get_contents($scriptPath));
             } catch (\Exception $e) {
-                error_log("Erro ao inicializar banco de dados: " . $e->getMessage());
+                error_log('Erro ao executar ' . $arquivo . ': ' . $e->getMessage());
             }
         }
     }

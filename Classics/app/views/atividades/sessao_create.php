@@ -84,21 +84,21 @@ $erros = $erros ?? [];
                                 </div>
                                 <div class="col-md-4">
                                     <label for="qtd_min" class="form-label">Quantidade minima</label>
-                                    <input type="number" min="0" class="form-control <?= isset($erros['qtd_min']) ? 'is-invalid' : '' ?>" id="qtd_min" name="qtd_min" value="<?= htmlspecialchars((string) ($sessao['Qtd_min'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
+                                    <input type="number" min="1" max="9999" class="form-control <?= isset($erros['qtd_min']) ? 'is-invalid' : '' ?>" id="qtd_min" name="qtd_min" value="<?= htmlspecialchars((string) ($sessao['Qtd_min'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
                                     <?php if (isset($erros['qtd_min'])): ?>
                                         <div class="invalid-feedback"><?= htmlspecialchars($erros['qtd_min'], ENT_QUOTES, 'UTF-8') ?></div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="col-md-4">
                                     <label for="qtd_max" class="form-label">Quantidade maxima</label>
-                                    <input type="number" min="0" class="form-control <?= isset($erros['qtd_max']) ? 'is-invalid' : '' ?>" id="qtd_max" name="qtd_max" value="<?= htmlspecialchars((string) ($sessao['Qtd_max'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
+                                    <input type="number" min="1" max="9999" class="form-control <?= isset($erros['qtd_max']) ? 'is-invalid' : '' ?>" id="qtd_max" name="qtd_max" value="<?= htmlspecialchars((string) ($sessao['Qtd_max'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
                                     <?php if (isset($erros['qtd_max'])): ?>
                                         <div class="invalid-feedback"><?= htmlspecialchars($erros['qtd_max'], ENT_QUOTES, 'UTF-8') ?></div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="col-md-4">
                                     <label for="qtd_disponivel" class="form-label">Quantidade disponivel</label>
-                                    <input type="number" min="0" class="form-control <?= isset($erros['qtd_disponivel']) ? 'is-invalid' : '' ?>" id="qtd_disponivel" name="qtd_disponivel" value="<?= htmlspecialchars((string) ($sessao['Qtd_disponivel'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
+                                    <input type="number" min="0" max="9999" class="form-control <?= isset($erros['qtd_disponivel']) ? 'is-invalid' : '' ?>" id="qtd_disponivel" name="qtd_disponivel" value="<?= htmlspecialchars((string) ($sessao['Qtd_disponivel'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
                                     <?php if (isset($erros['qtd_disponivel'])): ?>
                                         <div class="invalid-feedback"><?= htmlspecialchars($erros['qtd_disponivel'], ENT_QUOTES, 'UTF-8') ?></div>
                                     <?php endif; ?>

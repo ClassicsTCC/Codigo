@@ -1,5 +1,4 @@
 <?php
-// Criado por IA; este model deve ser analisado e validado antes de uso em produção.
 
 namespace app\models;
 

@@ -17,6 +17,9 @@ use app\services\SessaoService;
 use DateTime;
 
 class AtividadeController extends Controller {
+	private const VALOR_MAXIMO = 999999.99;
+	private const QTD_MAXIMA_SESSAO = 9999;
+
 
 	private AtividadeService $service;
 	private CategoriaService $categoriaService;
@@ -86,16 +89,18 @@ class AtividadeController extends Controller {
 		if ($descricao === '') {
 			$erros['descricao'] = 'Informe a descricao da atividade.';
 		}
+		if ($localizacao === '') {
+			$erros['localizacao'] = 'Informe a cidade da atividade.';
+		}
 		$validacaoDuracao = $this->validarDuracao($duracaoHoras, $duracaoMinutos);
 		if ($validacaoDuracao['erro'] !== null) {
 			$erros['duracao'] = $validacaoDuracao['erro'];
 		} else {
 			$duracaoNormalizada = $validacaoDuracao['duracao'];
 		}
-		if ($valorInput === '') {
-			$erros['valor'] = 'Informe o valor da atividade.';
-		} elseif (!$this->isValidDecimalInput($valorInput)) {
-			$erros['valor'] = 'Informe um valor valido usando apenas numeros e ponto (ex: 10.50).';
+		$erroValor = $this->validarValor($valorInput);
+		if ($erroValor !== null) {
+			$erros['valor'] = $erroValor;
 		}
 		if ($novaCategoria !== '') {
 			// A categoria nova tem prioridade sobre a selecionada
@@ -138,7 +143,7 @@ class AtividadeController extends Controller {
 			return;
 		}
 
-		$valor = (float) $valorInput;
+		$valor = (float) $this->normalizarValor($valorInput);
 		$resultadoUpload = UploadImagem::salvar($_FILES['fotos'] ?? null, 'atividades', 'atividade');
 		if (!$resultadoUpload['sucesso']) {
 			$data['atividade'] = [
@@ -235,16 +240,18 @@ class AtividadeController extends Controller {
 		if ($descricao === '') {
 			$erros['descricao'] = 'Informe a descricao da atividade.';
 		}
+		if ($localizacao === '') {
+			$erros['localizacao'] = 'Informe a cidade da atividade.';
+		}
 		$validacaoDuracao = $this->validarDuracao($duracaoHoras, $duracaoMinutos);
 		if ($validacaoDuracao['erro'] !== null) {
 			$erros['duracao'] = $validacaoDuracao['erro'];
 		} else {
 			$duracaoNormalizada = $validacaoDuracao['duracao'];
 		}
-		if ($valorInput === '') {
-			$erros['valor'] = 'Informe o valor da atividade.';
-		} elseif (!$this->isValidDecimalInput($valorInput)) {
-			$erros['valor'] = 'Informe um valor valido usando apenas numeros e ponto (ex: 10.50).';
+		$erroValor = $this->validarValor($valorInput);
+		if ($erroValor !== null) {
+			$erros['valor'] = $erroValor;
 		}
 		if ($categoriaInput === '') {
 			$erros['categoria_id'] = 'Selecione uma categoria.';
@@ -292,7 +299,7 @@ class AtividadeController extends Controller {
 			return;
 		}
 
-		$valor = (float) $valorInput;
+		$valor = (float) $this->normalizarValor($valorInput);
 		$fotoAtual = (string) ($atividadeAtual['Fotos'] ?? '');
 		$resultadoUpload = UploadImagem::salvar($_FILES['fotos'] ?? null, 'atividades', 'atividade');
 		if (!$resultadoUpload['sucesso']) {
@@ -328,7 +335,7 @@ class AtividadeController extends Controller {
 			$nome,
 			$duracaoNormalizada,
 			$descricao,
-			$localizacao !== '' ? $localizacao : null,
+			$localizacao,
 			$valor,
 			$fotos,
 			$categoriaId,
@@ -383,7 +390,8 @@ class AtividadeController extends Controller {
 		}
 
 		$origem = $_POST['origem'] ?? 'create';
-		$cep = trim((string) ($_POST['cep'] ?? ''));
+		// Aceita o CEP digitado com hífen ou espaço (85851-000)
+		$cep = preg_replace('/[\s.-]/', '', trim((string) ($_POST['cep'] ?? '')));
 		$complemento = trim((string) ($_POST['complemento'] ?? ''));
 		$erros = [];
 
@@ -634,18 +642,24 @@ class AtividadeController extends Controller {
 			$erros['qtd_min'] = 'Informe a quantidade minima.';
 		} elseif (!$this->isDigitsOnly($qtdMinInput)) {
 			$erros['qtd_min'] = 'A quantidade minima deve conter apenas numeros.';
+		} elseif (!$this->quantidadeNoLimite($qtdMinInput)) {
+			$erros['qtd_min'] = 'A quantidade minima deve ser de 1 a ' . self::QTD_MAXIMA_SESSAO . '.';
 		}
 
 		if ($qtdMaxInput === '') {
 			$erros['qtd_max'] = 'Informe a quantidade maxima.';
 		} elseif (!$this->isDigitsOnly($qtdMaxInput)) {
 			$erros['qtd_max'] = 'A quantidade maxima deve conter apenas numeros.';
+		} elseif (!$this->quantidadeNoLimite($qtdMaxInput)) {
+			$erros['qtd_max'] = 'A quantidade maxima deve ser de 1 a ' . self::QTD_MAXIMA_SESSAO . '.';
 		}
 
 		if ($qtdDisponivelInput === '') {
 			$erros['qtd_disponivel'] = 'Informe a quantidade disponivel.';
 		} elseif (!$this->isDigitsOnly($qtdDisponivelInput)) {
 			$erros['qtd_disponivel'] = 'A quantidade disponivel deve conter apenas numeros.';
+		} elseif (strlen(ltrim($qtdDisponivelInput, '0')) > 4) {
+			$erros['qtd_disponivel'] = 'A quantidade disponivel nao pode passar de ' . self::QTD_MAXIMA_SESSAO . '.';
 		}
 
 		$qtdMin = $qtdMinInput !== '' && $this->isDigitsOnly($qtdMinInput) ? (int) $qtdMinInput : null;
@@ -916,6 +930,42 @@ class AtividadeController extends Controller {
 		return preg_match('/^\d+(\.\d{1,2})?$/', $value) === 1;
 	}
 
+	// Aceita o valor com vírgula decimal (150,50 ou 1.500,50) e devolve no formato 1500.50
+	private function normalizarValor(string $valorInput): string
+	{
+		$valor = str_replace(' ', '', $valorInput);
+		if (str_contains($valor, ',')) {
+			$valor = str_replace(['.', ','], ['', '.'], $valor);
+		}
+
+		return $valor;
+	}
+
+	private function validarValor(string $valorInput): ?string
+	{
+		if ($valorInput === '') {
+			return 'Informe o valor da atividade.';
+		}
+
+		$valor = $this->normalizarValor($valorInput);
+		if (!$this->isValidDecimalInput($valor)) {
+			return 'Informe um valor valido (ex: 150,50).';
+		}
+		if ((float) $valor > self::VALOR_MAXIMO) {
+			return 'O valor nao pode passar de R$ 999.999,99.';
+		}
+
+		return null;
+	}
+
+	// Quantidade de participantes de uma sessão: inteiro de 1 a QTD_MAXIMA_SESSAO
+	private function quantidadeNoLimite(string $quantidadeInput): bool
+	{
+		$quantidade = ltrim($quantidadeInput, '0');
+
+		return $quantidade !== '' && strlen($quantidade) <= 4 && (int) $quantidade <= self::QTD_MAXIMA_SESSAO;
+	}
+
 	// RN04: a sessao deve ter data valida e acontecer em data e horario futuros
 	private function validarDataHoraSessao(string $dataSessao, string $hora): ?string
 	{
@@ -964,12 +1014,16 @@ class AtividadeController extends Controller {
 			$erros['qtd_min'] = 'Informe a quantidade minima.';
 		} elseif (!$this->isDigitsOnly($qtdMinInput)) {
 			$erros['qtd_min'] = 'A quantidade minima deve conter apenas numeros.';
+		} elseif (!$this->quantidadeNoLimite($qtdMinInput)) {
+			$erros['qtd_min'] = 'A quantidade minima deve ser de 1 a ' . self::QTD_MAXIMA_SESSAO . '.';
 		}
 
 		if ($qtdMaxInput === '') {
 			$erros['qtd_max'] = 'Informe a quantidade maxima.';
 		} elseif (!$this->isDigitsOnly($qtdMaxInput)) {
 			$erros['qtd_max'] = 'A quantidade maxima deve conter apenas numeros.';
+		} elseif (!$this->quantidadeNoLimite($qtdMaxInput)) {
+			$erros['qtd_max'] = 'A quantidade maxima deve ser de 1 a ' . self::QTD_MAXIMA_SESSAO . '.';
 		}
 
 		if (!$edicao) {
@@ -977,6 +1031,8 @@ class AtividadeController extends Controller {
 				$erros['qtd_disponivel'] = 'Informe a quantidade disponivel.';
 			} elseif (!$this->isDigitsOnly($qtdDisponivelInput)) {
 				$erros['qtd_disponivel'] = 'A quantidade disponivel deve conter apenas numeros.';
+			} elseif (strlen(ltrim($qtdDisponivelInput, '0')) > 4) {
+				$erros['qtd_disponivel'] = 'A quantidade disponivel nao pode passar de ' . self::QTD_MAXIMA_SESSAO . '.';
 			}
 		}
 

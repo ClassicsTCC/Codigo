@@ -1,5 +1,4 @@
 <?php
-// Criado por IA; este model deve ser analisado e validado antes de uso em produção.
 
 namespace app\models;
 
@@ -9,7 +8,7 @@ class Agendamento
     private ?int $quantidade_pessoas;
     private ?string $data_hora;
     private ?string $status;
-    private ?int $id_atividade; //Pode ser removida, mas vai ter q mudar os diagramas 
+    private ?int $id_atividade;
     private ?int $id_usuario;
     private ?int $id_sessao;
 

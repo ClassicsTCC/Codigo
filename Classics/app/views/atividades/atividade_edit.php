@@ -133,12 +133,15 @@ $paneSessoes = $abaAtiva === 'sessoes' ? 'show active' : '';
 
                             <div class="mb-3">
                                 <label for="localizacao" class="form-label">Cidade</label>
-                                <input type="text" class="form-control" id="localizacao" name="localizacao" placeholder="Ex.: Foz do Iguaçu" value="<?= htmlspecialchars($atividade['Localizacao'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="text" class="form-control <?= isset($erros['localizacao']) ? 'is-invalid' : '' ?>" id="localizacao" name="localizacao" placeholder="Ex.: Foz do Iguaçu" value="<?= htmlspecialchars($atividade['Localizacao'] ?? '', ENT_QUOTES, 'UTF-8') ?>" required>
+                                <?php if (isset($erros['localizacao'])): ?>
+                                    <div class="invalid-feedback"><?= htmlspecialchars($erros['localizacao'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <?php endif; ?>
                             </div>
 
                             <div class="mb-3">
                                 <label for="valor" class="form-label">Valor</label>
-                                <input type="text" class="form-control <?= isset($erros['valor']) ? 'is-invalid' : '' ?>" id="valor" name="valor" value="<?= htmlspecialchars((string) ($atividade['Valor'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="text" class="form-control <?= isset($erros['valor']) ? 'is-invalid' : '' ?>" id="valor" name="valor" inputmode="decimal" placeholder="Ex.: 150,50" value="<?= htmlspecialchars((string) ($atividade['Valor'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                 <?php if (isset($erros['valor'])): ?>
                                     <div class="invalid-feedback"><?= htmlspecialchars($erros['valor'], ENT_QUOTES, 'UTF-8') ?></div>
                                 <?php endif; ?>
@@ -287,21 +290,21 @@ $paneSessoes = $abaAtiva === 'sessoes' ? 'show active' : '';
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label for="sessao_qtd_min" class="form-label">Quantidade minima</label>
-                                                    <input type="number" min="0" class="form-control <?= isset($erros['qtd_min']) && $sessaoEditandoId === 0 ? 'is-invalid' : '' ?>" id="sessao_qtd_min" name="qtd_min" value="<?= htmlspecialchars((string) ($sessaoForm['Qtd_min'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
+                                                    <input type="number" min="1" max="9999" class="form-control <?= isset($erros['qtd_min']) && $sessaoEditandoId === 0 ? 'is-invalid' : '' ?>" id="sessao_qtd_min" name="qtd_min" value="<?= htmlspecialchars((string) ($sessaoForm['Qtd_min'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
                                                     <?php if (isset($erros['qtd_min']) && $sessaoEditandoId === 0): ?>
                                                         <div class="invalid-feedback"><?= htmlspecialchars($erros['qtd_min'], ENT_QUOTES, 'UTF-8') ?></div>
                                                     <?php endif; ?>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label for="sessao_qtd_max" class="form-label">Quantidade maxima</label>
-                                                    <input type="number" min="0" class="form-control <?= isset($erros['qtd_max']) && $sessaoEditandoId === 0 ? 'is-invalid' : '' ?>" id="sessao_qtd_max" name="qtd_max" value="<?= htmlspecialchars((string) ($sessaoForm['Qtd_max'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
+                                                    <input type="number" min="1" max="9999" class="form-control <?= isset($erros['qtd_max']) && $sessaoEditandoId === 0 ? 'is-invalid' : '' ?>" id="sessao_qtd_max" name="qtd_max" value="<?= htmlspecialchars((string) ($sessaoForm['Qtd_max'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
                                                     <?php if (isset($erros['qtd_max']) && $sessaoEditandoId === 0): ?>
                                                         <div class="invalid-feedback"><?= htmlspecialchars($erros['qtd_max'], ENT_QUOTES, 'UTF-8') ?></div>
                                                     <?php endif; ?>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label for="sessao_qtd_disponivel" class="form-label">Quantidade disponivel</label>
-                                                    <input type="number" min="0" class="form-control <?= isset($erros['qtd_disponivel']) && $sessaoEditandoId === 0 ? 'is-invalid' : '' ?>" id="sessao_qtd_disponivel" name="qtd_disponivel" value="<?= htmlspecialchars((string) ($sessaoForm['Qtd_disponivel'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
+                                                    <input type="number" min="0" max="9999" class="form-control <?= isset($erros['qtd_disponivel']) && $sessaoEditandoId === 0 ? 'is-invalid' : '' ?>" id="sessao_qtd_disponivel" name="qtd_disponivel" value="<?= htmlspecialchars((string) ($sessaoForm['Qtd_disponivel'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" required>
                                                     <?php if (isset($erros['qtd_disponivel']) && $sessaoEditandoId === 0): ?>
                                                         <div class="invalid-feedback"><?= htmlspecialchars($erros['qtd_disponivel'], ENT_QUOTES, 'UTF-8') ?></div>
                                                     <?php endif; ?>
@@ -359,13 +362,13 @@ $paneSessoes = $abaAtiva === 'sessoes' ? 'show active' : '';
                                                                     <?php endif; ?>
                                                                 </td>
                                                                 <td>
-                                                                    <input type="number" form="<?= htmlspecialchars($updateFormId, ENT_QUOTES, 'UTF-8') ?>" min="0" class="form-control form-control-sm <?= isset($erros['qtd_min']) && $editandoLinha ? 'is-invalid' : '' ?>" name="qtd_min" value="<?= htmlspecialchars($qtdMinLinha, ENT_QUOTES, 'UTF-8') ?>" required>
+                                                                    <input type="number" form="<?= htmlspecialchars($updateFormId, ENT_QUOTES, 'UTF-8') ?>" min="1" max="9999" class="form-control form-control-sm <?= isset($erros['qtd_min']) && $editandoLinha ? 'is-invalid' : '' ?>" name="qtd_min" value="<?= htmlspecialchars($qtdMinLinha, ENT_QUOTES, 'UTF-8') ?>" required>
                                                                     <?php if (isset($erros['qtd_min']) && $editandoLinha): ?>
                                                                         <div class="invalid-feedback d-block"><?= htmlspecialchars($erros['qtd_min'], ENT_QUOTES, 'UTF-8') ?></div>
                                                                     <?php endif; ?>
                                                                 </td>
                                                                 <td>
-                                                                    <input type="number" form="<?= htmlspecialchars($updateFormId, ENT_QUOTES, 'UTF-8') ?>" min="<?= $qtdReservadaLinha ?>" class="form-control form-control-sm <?= isset($erros['qtd_max']) && $editandoLinha ? 'is-invalid' : '' ?>" name="qtd_max" value="<?= htmlspecialchars($qtdMaxLinha, ENT_QUOTES, 'UTF-8') ?>" required>
+                                                                    <input type="number" form="<?= htmlspecialchars($updateFormId, ENT_QUOTES, 'UTF-8') ?>" min="<?= max(1, $qtdReservadaLinha) ?>" max="9999" class="form-control form-control-sm <?= isset($erros['qtd_max']) && $editandoLinha ? 'is-invalid' : '' ?>" name="qtd_max" value="<?= htmlspecialchars($qtdMaxLinha, ENT_QUOTES, 'UTF-8') ?>" required>
                                                                     <?php if (isset($erros['qtd_max']) && $editandoLinha): ?>
                                                                         <div class="invalid-feedback d-block"><?= htmlspecialchars($erros['qtd_max'], ENT_QUOTES, 'UTF-8') ?></div>
                                                                     <?php endif; ?>

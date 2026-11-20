@@ -31,17 +31,11 @@ class Usuario
         $this->criadoEm = new DateTimeImmutable();
     } 
 
-    /**
-     * Get the value of id_usuario
-     */
     public function getIdUsuario(): int
     {
         return $this->id_usuario;
     }
 
-    /**
-     * Set the value of id_usuario
-     */
     public function setIdUsuario(int $id_usuario): self
     {
         $this->id_usuario = $id_usuario;
@@ -49,17 +43,11 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of nome
-     */
     public function getNome(): string
     {
         return $this->nome;
     }
 
-    /**
-     * Set the value of nome
-     */
     public function setNome(string $nome): self
     {
         $this->nome = $nome;
@@ -67,17 +55,11 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of email
-     */
     public function getEmail(): string
     {
         return $this->email;
     }
 
-    /**
-     * Set the value of email
-     */
     public function setEmail(string $email): self
     {
         $this->email = $email;
@@ -85,17 +67,11 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of cpf
-     */
     public function getCpf(): string
     {
         return $this->cpf;
     }
 
-    /**
-     * Set the value of cpf
-     */
     public function setCpf(string $cpf): self
     {
         $this->cpf = $cpf;
@@ -103,17 +79,11 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of telefone
-     */
     public function getTelefone(): string
     {
         return $this->telefone;
     }
 
-    /**
-     * Set the value of telefone
-     */
     public function setTelefone(string $telefone): self
     {
         $this->telefone = $telefone;
@@ -121,18 +91,12 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of idade
-     */
     public function getIdade(): int
     {
         // O valor chega como texto do formulário; a validação garante que é um número de 18 a 120
         return (int) $this->idade;
     }
 
-    /**
-     * Set the value of idade
-     */
     public function setIdade(int $idade): self
     {
         $this->idade = $idade;
@@ -140,17 +104,11 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of tipo_usuario
-     */
     public function getTipoUsuario(): string
     {
         return $this->tipo_usuario;
     }
 
-    /**
-     * Set the value of tipo_usuario
-     */
     public function setTipoUsuario(string $tipo_usuario): self
     {
         $this->tipo_usuario = $tipo_usuario;
@@ -158,17 +116,11 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of foto
-     */
     public function getFoto(): string
     {
         return $this->foto;
     }
 
-    /**
-     * Set the value of foto
-     */
     public function setFoto(string $foto): self
     {
         $this->foto = $foto;
@@ -176,17 +128,11 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of senha
-     */
     public function getSenha(): string
     {
         return $this->senha;
     }
 
-    /**
-     * Set the value of senha
-     */
     public function setSenha(string $senha): self
     {
         $this->senha = $senha;
@@ -194,17 +140,11 @@ class Usuario
         return $this;
     }
 
-    /**
-     * Get the value of criadoEm
-     */
     public function getCriadoEm(): DateTimeImmutable
     {
         return $this->criadoEm;
     }
 
-    /**
-     * Set the value of criadoEm
-     */
     public function setCriadoEm(DateTimeImmutable $criadoEm): self
     {
         $this->criadoEm = $criadoEm;

@@ -11,7 +11,6 @@ class Validador {
 
     public function obrigatorio(string $campo, mixed $valor, ?string $mensagem = null) {
 
-        //! = = 
         if (empty($valor) && $valor !== '0') {
             $this->erros[$campo] = $mensagem ?? "O campo {$campo} é obrigatório";
         }
@@ -19,7 +18,7 @@ class Validador {
         return $this;
 
     }
-    //valida os emails
+
     public function email(string $campo, mixed $valor): self
     {
         if ($valor === null || $valor === '') {
@@ -32,7 +31,7 @@ class Validador {
 
         return $this;
     }
-    // valida os cpfs
+
     public function cpf(string $campo, mixed $valor): self
     {
         if ($valor === null || $valor === '') {
@@ -65,7 +64,7 @@ class Validador {
 
         return $this;
     }
-    //valida os npjs
+
     public function cnpj(string $campo, mixed $valor): self
     {
         if ($valor === null || $valor === '') {
@@ -100,7 +99,7 @@ class Validador {
 
         return $this;
     }
-    //valida os telefones
+
     public function telefone(string $campo, mixed $valor): self
     {
         if ($valor === null || $valor === '') {
